@@ -20,14 +20,9 @@ public class User {
     private String email;
 
     @Column(nullable = false)
-    private String passwordHash;
+    private String password;
 
-    @ManyToOne
-    @JoinColumn(name = "role_id")
+    @Enumerated(EnumType.STRING)
     private Role role;
-
-    private Long customerId;
-
-    private boolean enabled = true;
 }
 

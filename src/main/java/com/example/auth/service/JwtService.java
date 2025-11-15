@@ -1,65 +1,54 @@
 package com.example.auth.service;
 
-import java.sql.Date;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
+import java.util.Date;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.example.auth.config.KeyProvider;
 import com.example.auth.model.User;
-import com.nimbusds.jose.JOSEObjectType;
-import com.nimbusds.jose.JWSAlgorithm;
-import com.nimbusds.jose.JWSHeader;
-import com.nimbusds.jose.JWSSigner;
-import com.nimbusds.jose.crypto.RSASSASigner;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
 
-import lombok.RequiredArgsConstructor;
 
 @Service
-@RequiredArgsConstructor
 public class JwtService {
-    private final KeyProvider keyProvider;
 
-    @Value("${auth.jwt.issuer}")
-    private String issuer;
+    private static final String SECRET = "MI_SUPER_SECRETO_MEGA_LARGO_PARA_JWT_2024_2025_789456123";
 
-    @Value("${auth.jwt.access-token-minutes}")
-    private long accessTokenMinutes;
+    public String generarToken(User user) {
 
-    public String generateAccessToken(User user) {
+        return Jwts.builder()
+                .setSubject(user.getEmail())
+                .claim("role", user.getRole().name())
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 24h
+                .signWith(
+                    Keys.hmacShaKeyFor(SECRET.getBytes()),
+                    SignatureAlgorithm.HS256
+                )
+                .compact();
+    }
+
+    public String extraerEmail(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(SECRET.getBytes())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
+        return claims.getSubject();
+    }
+
+    public boolean validarToken(String token) {
         try {
-            Instant now = Instant.now();
-            
-            JWSSigner signer = new RSASSASigner(keyProvider.getRsaKey().toPrivateKey());
-
-            JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    .subject(user.getEmail())
-                    .issuer(issuer)
-                    .issueTime(Date.from(now))
-                    .expirationTime(Date.from(now.plus(accessTokenMinutes, ChronoUnit.MINUTES)))
-                    .jwtID(UUID.randomUUID().toString())
-                    .claim("role", user.getRole().getName())
-                    .claim("customerId", user.getCustomerId())
-                    .build();
-
-            SignedJWT jwt = new SignedJWT(
-                    new JWSHeader.Builder(JWSAlgorithm.RS256)
-                            .keyID(keyProvider.getRsaKey().getKeyID())
-                            .type(JOSEObjectType.JWT)
-                            .build(),
-                    claims
-            );
-
-            jwt.sign(signer);
-
-            return jwt.serialize();
+            Jwts.parserBuilder()
+                    .setSigningKey(SECRET.getBytes())
+                    .build()
+                    .parseClaimsJws(token);
+            return true;
         } catch (Exception e) {
-            throw new RuntimeException("Error generando token JWT", e);
+            return false;
         }
     }
 }

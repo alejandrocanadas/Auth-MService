@@ -9,8 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.auth.DTO.LoginRequest;
 import com.example.auth.DTO.LoginResponse;
+import com.example.auth.DTO.RegistroRequest;
+import com.example.auth.DTO.RegistroResponse;
 import com.example.auth.model.User;
 import com.example.auth.repository.UserRepository;
+import com.example.auth.service.AuthService;
 import com.example.auth.service.JwtService;
 
 import lombok.RequiredArgsConstructor;
@@ -20,19 +23,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
+    private final AuthService authService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+        return ResponseEntity.ok(authService.login(request));
+    }
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash()))
-            throw new RuntimeException("Contraseña incorrecta");
-
-        String token = jwtService.generateAccessToken(user);
-        return ResponseEntity.ok(new LoginResponse(token, user.getRole().getName()));
+    @PostMapping("/register")
+    public ResponseEntity<RegistroResponse> register(@RequestBody RegistroRequest request) {
+        return ResponseEntity.ok(authService.register(request));
     }
 }
